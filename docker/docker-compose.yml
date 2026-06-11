@@ -1,0 +1,116 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: referai-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-referai}
+      POSTGRES_USER: ${DB_USER:-referai_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password}
+    volumes:
+      - /d/ReferAI/postgres_data:/var/lib/postgresql/data
+      - /d/ReferAI/docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - referai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-referai_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: referai-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - /d/ReferAI/redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - referai-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: /d/ReferAI/backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: referai-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: ${ENVIRONMENT:-dev}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-referai}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-referai_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-dev_password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_key_change_in_prod}
+      JWT_EXPIRY: ${JWT_EXPIRY:-86400}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dev_client_id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dev_secret}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-dev_client_id}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-dev_secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk_dev_key}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-dev_key}
+      FILE_UPLOAD_DIR: /d/ReferAI/uploads
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - referai-network
+    volumes:
+      - /d/ReferAI/uploads:/d/ReferAI/uploads
+    restart: unless-stopped
+
+  # React Frontend
+  frontend:
+    build:
+      context: /d/ReferAI/frontend
+      dockerfile: ../docker/Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:8080
+    container_name: referai-frontend
+    environment:
+      VITE_API_URL: ${REACT_APP_API_URL:-http://localhost:8080}
+      VITE_WS_URL: ${REACT_APP_WS_URL:-ws://localhost:8080}
+    ports:
+      - "3000:5173"
+    depends_on:
+      - backend
+    networks:
+      - referai-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: referai-nginx
+    volumes:
+      - /d/ReferAI/docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - referai-network
+    restart: unless-stopped
+
+networks:
+  referai-network:
+    driver: bridge

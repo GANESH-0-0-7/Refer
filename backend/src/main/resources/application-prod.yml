@@ -1,0 +1,21 @@
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    root: WARN
+    com.referai: INFO
+  file:
+    name: /d/ReferAI/logs/app-prod.log
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: always
+    include-exception: false
+  compression:
+    enabled: true
+    min-response-size: 2048

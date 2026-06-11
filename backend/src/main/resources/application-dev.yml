@@ -1,0 +1,24 @@
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        generate_statistics: true
+
+logging:
+  level:
+    root: INFO
+    com.referai: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  file:
+    name: /d/ReferAI/logs/app-dev.log
+
+server:
+  error:
+    include-stacktrace: always
+    include-message: always
+    include-exception: true
