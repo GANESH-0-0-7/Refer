@@ -1,0 +1,117 @@
+# =========================
+# Git
+# =========================
+
+.git
+
+# =========================
+# IDE
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+
+# =========================
+# Operating System
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+# Node
+# =========================
+
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+
+# =========================
+# Java / Maven
+# =========================
+
+target/
+backend/target/
+
+*.class
+*.jar
+*.war
+*.ear
+
+.classpath
+.project
+.settings/
+
+# =========================
+# Build Reports
+# =========================
+
+backend/dependency_tree*.txt
+backend/effective_pom*
+backend/mvn_compile_output.txt
+
+# =========================
+# Python
+# =========================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Environment
+# =========================
+
+.env
+.env.local
+.env.*.local
+
+# =========================
+# Docker
+# =========================
+
+.dockerignore
+
+# =========================
+# Mobile
+# =========================
+
+mobile/build/
+mobile/.dart_tool/
+mobile/.packages
+mobile/pubspec.lock
+
+# =========================
+# Frontend
+# =========================
+
+frontend/build/
+frontend/dist/
+
+# =========================
+# Data & Uploads
+# =========================
+
+postgres_data/
+redis_data/
+uploads/
+logs/
+
+# =========================
+# Temporary files
+# =========================
+
+*.tmp
+*.bak
+
+# =========================
+# Log files
+# =========================
+
+*.log
