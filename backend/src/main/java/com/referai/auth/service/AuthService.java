@@ -55,15 +55,28 @@ public class AuthService {
                 .build();
 
         // Assign role based on user type
-        String roleCode = request.getUserType() != null ? request.getUserType() : "ROLE_CANDIDATE";
-        Role role = roleRepository.findByCode(roleCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleCode));
+        // Assign role based on user type
+String roleCode = "ROLE_CANDIDATE";
 
-        user.addRole(role);
-        User savedUser = userRepository.save(user);
+if (request.getUserType() != null && !request.getUserType().isBlank()) {
+    roleCode = request.getUserType().toUpperCase();
 
-        log.info("User registered successfully: {}", savedUser.getEmail());
+    if (!roleCode.startsWith("ROLE_")) {
+        roleCode = "ROLE_" + roleCode;
+    }
+}
 
+final String finalRoleCode = roleCode;
+
+
+Role role = roleRepository.findByCode(finalRoleCode)
+        .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + finalRoleCode));
+
+
+user.addRole(role);
+User savedUser = userRepository.save(user);
+
+log.info("User registered successfully: {}", savedUser.getEmail());
         // Generate tokens
         String authorities = role.getCode();
         String accessToken = jwtService.generateAccessTokenFromEmail(savedUser.getEmail(), authorities);

@@ -66,7 +66,7 @@ public class JwtService {
 
     public String getEmailFromToken(String token) {
         try {
-            return Jwts.parserBuilder()
+            return Jwts.parser()
                     .setSigningKey(getSigningKey())
                     .build()
                     .parseClaimsJws(token)
@@ -80,7 +80,7 @@ public class JwtService {
 
     public String getAuthoritiesFromToken(String token) {
         try {
-            return Jwts.parserBuilder()
+            return Jwts.parser()
                     .setSigningKey(getSigningKey())
                     .build()
                     .parseClaimsJws(token)
@@ -94,7 +94,7 @@ public class JwtService {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
+            Jwts.parser()
                     .setSigningKey(getSigningKey())
                     .build()
                     .parseClaimsJws(token);
@@ -110,7 +110,7 @@ public class JwtService {
 
     public long getExpiryFromToken(String token) {
         try {
-            return Jwts.parserBuilder()
+            return Jwts.parser()
                     .setSigningKey(getSigningKey())
                     .build()
                     .parseClaimsJws(token)

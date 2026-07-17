@@ -25,16 +25,7 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_status ON users(status);
 CREATE INDEX idx_users_created_at ON users(created_at);
 
-CREATE TABLE user_roles (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(50) NOT NULL,
-    assigned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT role_check CHECK (role IN ('candidate', 'employee', 'recruiter', 'mentor', 'admin'))
-);
 
-CREATE UNIQUE INDEX idx_user_roles_unique ON user_roles(user_id, role);
-CREATE INDEX idx_user_roles_role ON user_roles(role);
 
 CREATE TABLE oauth_tokens (
     id BIGSERIAL PRIMARY KEY,
@@ -408,19 +399,4 @@ CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at DESC);
 -- FUNCTIONS
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION ensure_candidate_role_fn() RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO user_roles (user_id, role)
-    SELECT NEW.user_id, 'candidate'
-    WHERE NOT EXISTS (
-        SELECT 1 FROM user_roles
-        WHERE user_id = NEW.user_id AND role = 'candidate'
-    );
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ensure_candidate_role
-    AFTER INSERT ON candidates
-    FOR EACH ROW
-    EXECUTE FUNCTION ensure_candidate_role_fn();

@@ -16,9 +16,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -37,10 +36,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = jwtService.getEmailFromToken(jwt);
                 String authorities = jwtService.getAuthoritiesFromToken(jwt);
 
-                Collection<GrantedAuthority> grantedAuthorities = new ArrayList<>();
+                List<GrantedAuthority> grantedAuthorities = List.of();
                 if (StringUtils.hasText(authorities)) {
                     grantedAuthorities = Arrays.stream(authorities.split(","))
-                            .map(SimpleGrantedAuthority::new)
+                            .map(authority -> (GrantedAuthority) new SimpleGrantedAuthority(authority))
                             .toList();
                 }
 
