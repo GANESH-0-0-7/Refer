@@ -1,0 +1,7 @@
+export { ProfilePage } from './ProfilePage'
+export { ProfileBasicInfo } from './ProfileBasicInfo'
+export { AvatarUpload } from './AvatarUpload'
+export { ProfileCompletion } from './ProfileCompletion'
+export { WorkExperienceComponent } from './WorkExperienceComponent'
+export { EducationComponent } from './EducationComponent'
+export { SkillsComponent } from './SkillsComponent'

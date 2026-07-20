@@ -10,14 +10,18 @@ export default function RegisterPage() {
     password: '',
     firstName: '',
     lastName: '',
-    userType: 'ROLE_CANDIDATE',
+    userType: 'CANDIDATE',
   })
+
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
   const navigate = useNavigate()
   const dispatch = useDispatch()
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -26,11 +30,13 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     setError('')
     setLoading(true)
 
     try {
       const response = await authService.register(formData)
+
       dispatch(
         registerSuccess({
           user: response.user,
@@ -38,9 +44,18 @@ export default function RegisterPage() {
           refreshToken: response.refreshToken,
         })
       )
+
       navigate('/dashboard')
     } catch (err: any) {
-      const message = err.response?.data?.message || 'Registration failed'
+      console.error('Registration Error:', err)
+      console.error('Response:', err.response?.data)
+
+      const message =
+        err.response?.data?.message ||
+        JSON.stringify(err.response?.data) ||
+        err.message ||
+        'Registration failed'
+
       setError(message)
       dispatch(registerFailure(message))
     } finally {
@@ -51,8 +66,13 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-slate-800 rounded-lg border border-slate-700 p-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-        <p className="text-slate-400 mb-6">Join ReferAI and start your career growth journey</p>
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Create Account
+        </h1>
+
+        <p className="text-slate-400 mb-6">
+          Join ReferAI and start your career growth journey
+        </p>
 
         {error && (
           <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/50 text-red-400 text-sm">
@@ -63,7 +83,10 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">First Name</label>
+              <label className="block text-sm font-medium text-slate-200 mb-1">
+                First Name
+              </label>
+
               <input
                 type="text"
                 name="firstName"
@@ -74,8 +97,12 @@ export default function RegisterPage() {
                 required
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">Last Name</label>
+              <label className="block text-sm font-medium text-slate-200 mb-1">
+                Last Name
+              </label>
+
               <input
                 type="text"
                 name="lastName"
@@ -89,7 +116,10 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Email</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Email
+            </label>
+
             <input
               type="email"
               name="email"
@@ -102,29 +132,35 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Password</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Password
+            </label>
+
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="••••••••"
+              placeholder="Enter your password"
               className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Account Type</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">
+              Account Type
+            </label>
+
             <select
               name="userType"
               value={formData.userType}
               onChange={handleChange}
               className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:outline-none focus:border-blue-500"
             >
-              <option value="ROLE_CANDIDATE">Candidate</option>
-              <option value="ROLE_EMPLOYEE">Employee</option>
-              <option value="ROLE_RECRUITER">Recruiter</option>
+              <option value="CANDIDATE">Candidate</option>
+              <option value="EMPLOYEE">Employee</option>
+              <option value="RECRUITER">Recruiter</option>
             </select>
           </div>
 
@@ -139,7 +175,10 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-slate-400">
           Already have an account?{' '}
-          <Link to="/login" className="text-blue-400 hover:text-blue-300">
+          <Link
+            to="/login"
+            className="text-blue-400 hover:text-blue-300"
+          >
             Sign in
           </Link>
         </p>

@@ -9,6 +9,8 @@ import com.referai.auth.repository.RoleRepository;
 import com.referai.auth.repository.UserRepository;
 import com.referai.common.exception.BusinessException;
 import com.referai.common.exception.ResourceNotFoundException;
+import com.referai.profile.entity.UserProfile;
+import com.referai.profile.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
 
 @Slf4j
 @Service
@@ -29,23 +30,22 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserProfileRepository userProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Check if email already exists
+
         if (userRepository.existsByEmailAndNotDeleted(request.getEmail())) {
             throw new BusinessException("Email already registered");
         }
 
-        // Validate password
         if (!isValidPassword(request.getPassword())) {
             throw new BusinessException("Password must be at least 8 characters");
         }
 
-        // Create new user
         User user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
@@ -54,32 +54,46 @@ public class AuthService {
                 .status("active")
                 .build();
 
-        // Assign role based on user type
-        // Assign role based on user type
-String roleCode = "ROLE_CANDIDATE";
+        String roleCode = "ROLE_CANDIDATE";
 
-if (request.getUserType() != null && !request.getUserType().isBlank()) {
-    roleCode = request.getUserType().toUpperCase();
+        if (request.getUserType() != null && !request.getUserType().isBlank()) {
+            roleCode = request.getUserType().toUpperCase();
 
-    if (!roleCode.startsWith("ROLE_")) {
-        roleCode = "ROLE_" + roleCode;
-    }
-}
+            if (!roleCode.startsWith("ROLE_")) {
+                roleCode = "ROLE_" + roleCode;
+            }
+        }
 
-final String finalRoleCode = roleCode;
+        Role role = roleRepository.findByCode(roleCode)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Role not found: " + roleCode));
 
+        user.addRole(role);
 
-Role role = roleRepository.findByCode(finalRoleCode)
-        .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + finalRoleCode));
+        User savedUser = userRepository.save(user);
 
+        // Automatically create profile for new user
+        if (!userProfileRepository.existsByUserId(savedUser.getId())) {
 
-user.addRole(role);
-User savedUser = userRepository.save(user);
+            UserProfile profile = UserProfile.builder()
+                    .userId(savedUser.getId())
+                    .profileVisibility("PUBLIC")
+                    .profileCompletion(0)
+                    .build();
 
-log.info("User registered successfully: {}", savedUser.getEmail());
-        // Generate tokens
+            userProfileRepository.save(profile);
+        }
+
+        log.info("User registered successfully: {}", savedUser.getEmail());
+
         String authorities = role.getCode();
-        String accessToken = jwtService.generateAccessTokenFromEmail(savedUser.getEmail(), authorities);
+
+        String accessToken =
+                jwtService.generateAccessTokenFromEmail(
+                        savedUser.getEmail(),
+                        authorities
+                );
+
         String refreshToken = generateAndSaveRefreshToken(savedUser);
 
         return AuthResponse.builder()
@@ -91,23 +105,32 @@ log.info("User registered successfully: {}", savedUser.getEmail());
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
+
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getEmail(),
-                            request.getPassword()
-                    )
-            );
+
+            Authentication authentication =
+                    authenticationManager.authenticate(
+                            new UsernamePasswordAuthenticationToken(
+                                    request.getEmail(),
+                                    request.getPassword()
+                            )
+                    );
 
             User user = userRepository.findByEmailWithRoles(request.getEmail())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("User not found"));
 
             String authorities = user.getAuthorities().stream()
                     .map(auth -> auth.getAuthority())
                     .reduce((a, b) -> a + "," + b)
                     .orElse("");
 
-            String accessToken = jwtService.generateAccessTokenFromEmail(user.getEmail(), authorities);
+            String accessToken =
+                    jwtService.generateAccessTokenFromEmail(
+                            user.getEmail(),
+                            authorities
+                    );
+
             String refreshToken = generateAndSaveRefreshToken(user);
 
             log.info("User logged in successfully: {}", user.getEmail());
@@ -119,89 +142,7 @@ log.info("User registered successfully: {}", savedUser.getEmail());
                     .build();
 
         } catch (Exception e) {
-            log.error("Login failed for email: {}", request.getEmail());
-            throw new BusinessException("Invalid email or password");
-        }
-    }
 
-    @Transactional
-    public AuthResponse refreshAccessToken(RefreshTokenRequest request) {
-        String token = request.getRefreshToken();
+            log.error("Login failed for email: {}", request.getEmail(), e);
 
-        RefreshToken refreshToken = refreshTokenRepository.findValidToken(token)
-                .orElseThrow(() -> new BusinessException("Invalid or expired refresh token"));
-
-        User user = refreshToken.getUser();
-
-        // Validate user still exists and is active
-        if (!user.isEnabled()) {
-            throw new BusinessException("User account is inactive");
-        }
-
-        String authorities = user.getAuthorities().stream()
-                .map(auth -> auth.getAuthority())
-                .reduce((a, b) -> a + "," + b)
-                .orElse("");
-
-        String newAccessToken = jwtService.generateAccessTokenFromEmail(user.getEmail(), authorities);
-        String newRefreshToken = generateAndSaveRefreshToken(user);
-
-        log.info("Access token refreshed for user: {}", user.getEmail());
-
-        return AuthResponse.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
-                .user(UserDto.from(user))
-                .build();
-    }
-
-    @Transactional
-    public void logout(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        refreshTokenRepository.deleteByUserId(user.getId());
-        log.info("User logged out: {}", email);
-    }
-
-    @Transactional
-    public void revokeRefreshToken(String token) {
-        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
-                .orElseThrow(() -> new ResourceNotFoundException("Refresh token not found"));
-
-        refreshToken.setRevoked(true);
-        refreshTokenRepository.save(refreshToken);
-    }
-
-    public String generateAndSaveRefreshToken(User user) {
-        // Revoke old refresh tokens
-        refreshTokenRepository.deleteByUserId(user.getId());
-
-        // Generate new refresh token
-        String token = jwtService.generateRefreshToken(user.getEmail());
-
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .token(token)
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .revoked(false)
-                .build();
-
-        refreshTokenRepository.save(refreshToken);
-        return token;
-    }
-
-    public User getUserByEmail(String email) {
-        return userRepository.findByEmailWithRoles(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    }
-
-    public User getUserById(Long id) {
-        return userRepository.findByIdWithRoles(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    }
-
-    private boolean isValidPassword(String password) {
-        return password != null && password.length() >= 8;
-    }
-}
+            throw new BusinessException("Invalid email");
